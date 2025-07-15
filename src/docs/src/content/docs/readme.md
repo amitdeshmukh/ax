@@ -548,7 +548,7 @@ Ax provides seamless integration with the Model Context Protocol (MCP), allowing
 your agents to access external tools, and resources through a standardized
 interface.
 
-### Using AxMCPClient
+<!-- ### Using AxMCPClient
 
 The `AxMCPClient` allows you to connect to any MCP-compatible server and use its
 capabilities within your Ax agents:
@@ -580,7 +580,7 @@ const memoryAgent = new AxAgent({
 const memoryGen = new AxGen("input, userId -> response", {
   functions: [client],
 });
-```
+``` -->
 
 ### Using AxMCPClient with a Remote Server
 
@@ -659,6 +659,10 @@ simplicity.
 
 - **🚀 Automatic Parallelization**: AI-powered dependency analysis automatically
   runs independent operations in parallel for maximum performance
+- **🛡️ Production Resilience**: Circuit breakers, retries, and graceful error
+  handling
+- **⚡ Performance Optimization**: Concurrency control and resource-aware
+  scheduling
 - **Ultra-Compact Syntax**: Powerful aliases (`n`, `e`, `m`, `b`, `w`) for rapid
   development
 - **Neural State Evolution**: Automatic state threading with full context
@@ -671,21 +675,40 @@ simplicity.
 - **Streaming-Native**: Real-time execution with end-to-end streaming support
 - **Automatic Observability**: Get tracing across the whole pipeline
 
-### Example: Automatic Parallelization (New!)
+### Example: Production-Ready Workflows with Auto-Parallelization
 
 AxFlow automatically analyzes dependencies and runs independent operations in
-parallel for maximum performance. **No manual `.parallel()` calls needed!**
+parallel for maximum performance. **Built-in error handling and resilience!**
 
 ```typescript
 import { AxAI, AxFlow } from "@ax-llm/ax";
 
 const ai = new AxAI({ name: "openai", apiKey: process.env.OPENAI_APIKEY });
 
-// 🚀 Automatic parallelization - no manual optimization needed!
+// 🚀 Production-ready with automatic parallelization + error handling
 const documentAnalyzer = new AxFlow<
   { documentText: string },
   { finalAnalysis: string }
->()
+>(
+  // ✨ NEW: Production configuration
+  {
+    errorHandling: {
+      maxRetries: 3,
+      backoffType: "exponential",
+      circuitBreaker: {
+        failureThreshold: 5,
+        resetTimeoutMs: 30000,
+      },
+    },
+    performance: {
+      maxConcurrency: 5,
+      resourceLimits: {
+        tokensPerMinute: 50000,
+        requestsPerSecond: 10,
+      },
+    },
+  },
+)
   .node("summarizer", "documentText:string -> documentSummary:string")
   .node("keywordExtractor", "documentText:string -> documentKeywords:string[]")
   .node("sentimentAnalyzer", "documentText:string -> documentSentiment:string")
@@ -694,7 +717,9 @@ const documentAnalyzer = new AxFlow<
     "documentSummary:string, documentKeywords:string[], documentSentiment:string -> combinedAnalysis:string",
   )
   // These three operations run automatically in parallel! 🎯
-  .execute("summarizer", (state) => ({ documentText: state.documentText }))
+  .execute("summarizer", (state) => ({ documentText: state.documentText }), {
+    errorHandling: { retries: 2, onError: "continue" },
+  })
   .execute(
     "keywordExtractor",
     (state) => ({ documentText: state.documentText }),
@@ -711,26 +736,33 @@ const documentAnalyzer = new AxFlow<
   }))
   .map((state) => ({ finalAnalysis: state.combinerResult.combinedAnalysis }));
 
-// ⚡ Automatic 1.5-3x speedup with zero code changes!
+// ⚡ Automatic 1.5-3x speedup + production resilience!
 const result = await documentAnalyzer.forward(ai, {
   documentText: "AI technology is revolutionary and will change everything...",
 });
 
 console.log("📊 Analysis:", result.finalAnalysis);
 // Execution Plan: 3 parallel operations → 1 sequential → 1 final
+// With automatic retries, circuit breakers, and graceful error handling
 ```
 
-### Example: Compact Syntax with Aliases
+### Example: Compact Syntax with Aliases + Error Handling
 
-For rapid development, use AxFlow's ultra-compact aliases:
+For rapid development, use AxFlow's ultra-compact aliases with production
+features:
 
 ```typescript
 import { AxAI, AxFlow } from "@ax-llm/ax";
 
 const ai = new AxAI({ name: "openai", apiKey: process.env.OPENAI_APIKEY });
 
-// 🎯 Same functionality, ultra-compact syntax
-const quickAnalyzer = new AxFlow<{ text: string }, { result: string }>()
+// 🎯 Same functionality, ultra-compact syntax + resilience
+const quickAnalyzer = new AxFlow<{ text: string }, { result: string }>(
+  {
+    errorHandling: { maxRetries: 2, fallbackStrategy: "graceful" },
+    performance: { maxConcurrency: 3 },
+  },
+)
   .n("sum", "text:string -> summary:string") // node
   .n("key", "text:string -> keywords:string[]") // node
   .n("sent", "text:string -> sentiment:string") // node
@@ -765,11 +797,23 @@ const creativityAI = new AxAI({
   config: { model: "claude-3-5-sonnet-20241022" },
 }); // For creativity
 
-// 🌟 The future: AI workflows that adapt and evolve
+// 🌟 The future: AI workflows that adapt and evolve with full resilience
 const autonomousContentEngine = new AxFlow<
   { concept: string; targetAudience: string },
   { campaign: string }
->()
+>(
+  {
+    errorHandling: {
+      circuitBreaker: { failureThreshold: 3, resetTimeoutMs: 60000 },
+      fallbackStrategy: "graceful",
+    },
+    performance: {
+      maxConcurrency: 4,
+      adaptiveConcurrency: true,
+      resourceMonitoring: { responseTimeThreshold: 10000 },
+    },
+  },
+)
   // Neural network of specialized AI nodes
   .node(
     "conceptAnalyzer",
@@ -825,11 +869,24 @@ console.log("🌟 Autonomous Campaign Generated:", result.campaign);
 ### Advanced Example: Self-Healing Research Pipeline
 
 ```typescript
-// 🔬 Autonomous research agent with error recovery
+// 🔬 Autonomous research agent with advanced error recovery
 const researchOracle = new AxFlow<
   { researchQuery: string },
   { insights: string; confidence: number }
->()
+>(
+  {
+    errorHandling: {
+      maxRetries: 5,
+      backoffType: "exponential",
+      circuitBreaker: { failureThreshold: 4, resetTimeoutMs: 45000 },
+      isolateErrors: true,
+    },
+    performance: {
+      maxConcurrency: 3,
+      resourceLimits: { tokensPerMinute: 30000 },
+    },
+  },
+)
   .n("queryExpander", "query:string -> expandedQueries:string[]")
   .n("knowledgeHarvester", "queries:string[] -> rawData:string[]")
   .n(
@@ -877,8 +934,17 @@ const researchOracle = new AxFlow<
   dependencies
 - **Optimal Execution Planning**: Automatically groups operations into parallel
   levels
+- **Concurrency Control**: Smart resource management with configurable limits
 - **Runtime Control**: Enable/disable auto-parallelization per execution as
   needed
+
+**🛡️ Production-Ready Resilience:**
+
+- **Circuit Breakers**: Automatic failure detection and recovery
+- **Exponential Backoff**: Smart retry strategies with configurable delays
+- **Graceful Degradation**: Fallback mechanisms for continuous operation
+- **Error Isolation**: Prevent cascading failures across workflow components
+- **Resource Monitoring**: Adaptive scaling based on system performance
 
 **Compared to Traditional Approaches:**
 
@@ -887,6 +953,7 @@ const researchOracle = new AxFlow<
 - **Multi-Modal Ready**: Native support for text, images, audio, and streaming
 - **Self-Optimizing**: Built-in compatibility with MiPRO and other advanced
   optimizers
+- **Enterprise Ready**: Circuit breakers, retries, and monitoring built-in
 - **Production Hardened**: Used by startups scaling to millions of users
 
 **Real-World Superpowers:**
@@ -895,8 +962,7 @@ const researchOracle = new AxFlow<
 - **Multi-Model Orchestration**: Route tasks to the perfect AI for each job
 - **Adaptive Pipelines**: Workflows that evolve based on real-time feedback
 - **Cost Intelligence**: Automatic optimization between speed, quality, and cost
-- **Production Ready**: Built for production with streaming, tracing, and
-  monitoring
+- **Mission Critical**: Built for production with enterprise-grade reliability
 
 > _"AxFlow doesn't just execute AI workflows—it orchestrates the future of
 > intelligent systems with automatic performance optimization"_
@@ -1476,8 +1542,7 @@ monitoring your AI applications with OpenTelemetry integration, see our detailed
 | ------------------ | ------------------ | -------------------------------------------- |
 | Docker Sandbox     | AxDockerSession    | Execute commands within a docker environment |
 | Embeddings Adapter | AxEmbeddingAdapter | Fetch and pass embedding to your function    |
-
-<!-- | JS Interpreter     | AxJSInterpreter    | Execute JS code in a sandboxed env           | -->
+| JS Interpreter     | AxJSInterpreter    | Execute JS code in a sandboxed env (Node.js only) |
 
 ## Check out all the examples
 
@@ -1500,6 +1565,7 @@ OPENAI_APIKEY=api-key npm run tsx ./src/examples/marketing.ts
 | [marketing.ts](https://github.com/ax-llm/ax/blob/main/src/examples/marketing.ts)                           | Generate short effective marketing sms messages                                                                        |
 | [vectordb.ts](https://github.com/ax-llm/ax/blob/main/src/examples/vectordb.ts)                             | Chunk, embed and search text                                                                                           |
 | [fibonacci.ts](https://github.com/ax-llm/ax/blob/main/src/examples/fibonacci.ts)                           | Use the JS code interpreter to compute fibonacci                                                                       |
+| [codingWithMemory.ts](https://github.com/ax-llm/ax/blob/main/src/examples/codingWithMemory.ts)             | Coding assistant with memory and JS interpreter (demonstrates both ax-tools features)                                  |
 | [summarize.ts](https://github.com/ax-llm/ax/blob/main/src/examples/summarize.ts)                           | Generate a short summary of a large block of text                                                                      |
 | [chain-of-thought.ts](https://github.com/ax-llm/ax/blob/main/src/examples/chain-of-thought.ts)             | Use chain-of-thought prompting to answer questions                                                                     |
 | [template-signatures.ts](https://github.com/ax-llm/ax/blob/main/src/examples/template-signatures.ts)       | Type-safe signatures using tagged template literals                                                                    |
@@ -1538,6 +1604,7 @@ OPENAI_APIKEY=api-key npm run tsx ./src/examples/marketing.ts
 | [optimizer-metrics.ts](https://github.com/ax-llm/ax/blob/main/src/examples/optimizer-metrics.ts)           | Optimizer metrics collection and monitoring for program tuning                                                         |
 | [ax-flow.ts](https://github.com/ax-llm/ax/blob/main/src/examples/ax-flow.ts)                               | 🚀 Futuristic AI workflow orchestration with autonomous multi-model pipelines, adaptive loops, and self-healing agents |
 | [ax-flow-auto-parallel.ts](https://github.com/ax-llm/ax/blob/main/src/examples/ax-flow-auto-parallel.ts)   | ⚡ Automatic parallelization demo - zero-config performance optimization with intelligent dependency analysis          |
+| [ax-flow-enhanced-demo.ts](https://github.com/ax-llm/ax/blob/main/src/examples/ax-flow-enhanced-demo.ts)   | 🛡️ Production-ready AxFlow with error handling, performance optimization, and enhanced type safety features            |
 
 ## Our Goal
 
