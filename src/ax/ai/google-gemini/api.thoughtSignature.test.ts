@@ -281,7 +281,11 @@ describe('thoughtSignature round-tripping for Gemini 3 models', () => {
           },
         ],
         thoughtBlocks: [
-          { data: 'thinking about the weather', encrypted: false, signature: 'cache-path-sig-001' },
+          {
+            data: 'thinking about the weather',
+            encrypted: false,
+            signature: 'cache-path-sig-001',
+          },
         ],
       },
       {
@@ -306,7 +310,9 @@ describe('thoughtSignature round-tripping for Gemini 3 models', () => {
     expect(modelMsg).toBeDefined();
 
     // The functionCall part must carry the thought_signature
-    const fcPart = modelMsg.parts.find((p: any) => p.functionCall?.name === 'getWeather');
+    const fcPart = modelMsg.parts.find(
+      (p: any) => p.functionCall?.name === 'getWeather'
+    );
     expect(fcPart).toBeDefined();
     expect(fcPart.thought_signature).toBe('cache-path-sig-001');
   });
@@ -341,7 +347,11 @@ describe('thoughtSignature round-tripping for Gemini 3 models', () => {
           },
         ],
         thoughtBlocks: [
-          { data: 'thinking about the weather', encrypted: false, signature: 'dynamic-path-sig-001' },
+          {
+            data: 'thinking about the weather',
+            encrypted: false,
+            signature: 'dynamic-path-sig-001',
+          },
         ],
       },
       {
@@ -357,14 +367,20 @@ describe('thoughtSignature round-tripping for Gemini 3 models', () => {
       'cachedContents/test-cache-name-123'
     );
 
-    expect(prepared.request.cachedContent).toBe('cachedContents/test-cache-name-123');
+    expect(prepared.request.cachedContent).toBe(
+      'cachedContents/test-cache-name-123'
+    );
 
     // The model (assistant) message must be present in the dynamic contents
-    const modelMsg = (prepared.request.contents as any[]).find((c: any) => c.role === 'model');
+    const modelMsg = (prepared.request.contents as any[]).find(
+      (c: any) => c.role === 'model'
+    );
     expect(modelMsg).toBeDefined();
 
     // The functionCall part must carry the thought_signature
-    const fcPart = modelMsg.parts.find((p: any) => p.functionCall?.name === 'getWeather');
+    const fcPart = modelMsg.parts.find(
+      (p: any) => p.functionCall?.name === 'getWeather'
+    );
     expect(fcPart).toBeDefined();
     expect(fcPart.thought_signature).toBe('dynamic-path-sig-001');
   });
