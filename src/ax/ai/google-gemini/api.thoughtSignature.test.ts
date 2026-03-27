@@ -254,4 +254,118 @@ describe('thoughtSignature round-tripping for Gemini 3 models', () => {
     expect(fcParts[1].functionCall.name).toBe('getNews');
     expect(fcParts[1].thought_signature).toBeUndefined();
   });
+
+  // ---------------------------------------------------------------------------
+  // 4. buildCacheCreateOp (extractCacheableContent path): thought_signature
+  //    preserved in the cache creation payload
+  // ---------------------------------------------------------------------------
+  it('buildCacheCreateOp preserves thought_signature on functionCall in cacheable contents', () => {
+    const ai = new AxAIGoogleGemini({
+      apiKey: 'test-key',
+      config: { model: AxAIGoogleGeminiModel.Gemini3Pro },
+      models: [],
+    });
+
+    // The assistant message (with thoughtBlocks + functionCalls) sits before the
+    // cache breakpoint (the function result has cache: true), so it lands inside
+    // extractCacheableContent and therefore inside buildCacheCreateOp's payload.
+    const history: any[] = [
+      { role: 'user', content: 'What is the weather in NYC?' },
+      {
+        role: 'assistant',
+        functionCalls: [
+          {
+            id: 'id1',
+            type: 'function',
+            function: { name: 'getWeather', params: '{"city":"NYC"}' },
+          },
+        ],
+        thoughtBlocks: [
+          { data: 'thinking about the weather', encrypted: false, signature: 'cache-path-sig-001' },
+        ],
+      },
+      {
+        role: 'function',
+        functionId: 'getWeather',
+        result: '{"temp":72,"condition":"sunny"}',
+        cache: true, // <-- breakpoint: all previous messages become cacheable
+      },
+    ];
+
+    const op = (ai as any).aiImpl.buildCacheCreateOp(
+      { chatPrompt: history, model: AxAIGoogleGeminiModel.Gemini3Pro } as any,
+      { contextCache: { ttlSeconds: 3600 } } as any
+    );
+
+    expect(op).toBeDefined();
+    const cacheReq = op!.request as any;
+    expect(cacheReq.contents).toBeDefined();
+
+    // The model (assistant) message must be present in the cacheable contents
+    const modelMsg = cacheReq.contents.find((c: any) => c.role === 'model');
+    expect(modelMsg).toBeDefined();
+
+    // The functionCall part must carry the thought_signature
+    const fcPart = modelMsg.parts.find((p: any) => p.functionCall?.name === 'getWeather');
+    expect(fcPart).toBeDefined();
+    expect(fcPart.thought_signature).toBe('cache-path-sig-001');
+  });
+
+  // ---------------------------------------------------------------------------
+  // 5. prepareCachedChatReq (extractDynamicContent path): thought_signature
+  //    preserved in the dynamic contents sent alongside the cache reference
+  // ---------------------------------------------------------------------------
+  it('prepareCachedChatReq preserves thought_signature on functionCall in dynamic contents', async () => {
+    const ai = new AxAIGoogleGemini({
+      apiKey: 'test-key',
+      config: { model: AxAIGoogleGeminiModel.Gemini3Pro },
+      models: [],
+    });
+
+    // The user message is the cache breakpoint; the assistant message (with
+    // thoughtBlocks + functionCalls) is AFTER the breakpoint, so it lands in
+    // extractDynamicContent and therefore inside prepareCachedChatReq's payload.
+    const history: any[] = [
+      {
+        role: 'user',
+        content: 'What is the weather in NYC?',
+        cache: true, // <-- breakpoint: everything after this is dynamic
+      },
+      {
+        role: 'assistant',
+        functionCalls: [
+          {
+            id: 'id1',
+            type: 'function',
+            function: { name: 'getWeather', params: '{"city":"NYC"}' },
+          },
+        ],
+        thoughtBlocks: [
+          { data: 'thinking about the weather', encrypted: false, signature: 'dynamic-path-sig-001' },
+        ],
+      },
+      {
+        role: 'function',
+        functionId: 'getWeather',
+        result: '{"temp":72,"condition":"sunny"}',
+      },
+    ];
+
+    const prepared = await (ai as any).aiImpl.prepareCachedChatReq(
+      { chatPrompt: history, model: AxAIGoogleGeminiModel.Gemini3Pro } as any,
+      {} as any,
+      'cachedContents/test-cache-name-123'
+    );
+
+    expect(prepared.request.cachedContent).toBe('cachedContents/test-cache-name-123');
+
+    // The model (assistant) message must be present in the dynamic contents
+    const modelMsg = (prepared.request.contents as any[]).find((c: any) => c.role === 'model');
+    expect(modelMsg).toBeDefined();
+
+    // The functionCall part must carry the thought_signature
+    const fcPart = modelMsg.parts.find((p: any) => p.functionCall?.name === 'getWeather');
+    expect(fcPart).toBeDefined();
+    expect(fcPart.thought_signature).toBe('dynamic-path-sig-001');
+  });
 });
